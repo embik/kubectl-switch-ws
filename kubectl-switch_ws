@@ -4,43 +4,75 @@ set -eu
 
 _switchws_inline_fzf='fzf --height=50% --reverse -0 --inline-info --border --header-lines=1'
 _exit='[exit]'
-_parent='[parent]'
+_parent='..'
 
-# ensure prerequisites are present.
-if ! command -v kubectl-workspace &> /dev/null; then
-  echo "could not find kubectl-workspace"
-  exit 1
-fi
-
-if ! command -v fzf &> /dev/null; then
-  echo "could not find fzf"
-  exit 1
-fi
 
 print_workspace () {
     echo -e "Workspace: \033[1;32m$1\033[0m"
 }
 
-# print current workspace once when starting switch-ws.
-print_workspace $(kubectl workspace current --short)
+printn () {
+  if [ ! -z "${1:-}" ]; then
+    echo "${1:-}\n"
+  fi
+}
 
-# start main loop of plugin.
-while true; do
+print_parent () {
+  if [[ ${1:-} == *":"* ]] || [[ ${1:-} == *"/"* ]]; then
+    printn "$_parent"
+  fi
+}
+
+# ensure prerequisites are present.
+startup_check () {
+  if ! command -v kubectl-workspace &> /dev/null; then
+    echo "error: could not find kubectl-workspace. See https://docs.kcp.io/kcp/latest/setup/kubectl-plugin/ for installation instructions"
+    exit 1
+  fi
+
+  if ! command -v fzf &> /dev/null; then
+    echo "error: could not find fzf. See https://github.com/junegunn/fzf#installation for installation instructions"
+    exit 1
+  fi
+
+  if ! kubectl api-resources | grep -e '^workspaces' >/dev/null; then
+    echo "error: target does not expose workspace resource type. Is this a kcp environment?"
+    exit 1
+  fi
+}
+
+main_loop () {
   # get child workspaces in current workspace.
-  workspaces=$(kubectl get workspace -o custom-columns=NAME:.metadata.name,TYPE:.spec.type.name,SHARD:".metadata.annotations.internal\.tenancy\.kcp\.io/shard",PHASE:.status.phase)
+  output=$(kubectl get workspace -o custom-columns=NAME:.metadata.name,TYPE:.spec.type.name,SHARD:".metadata.annotations.internal\.tenancy\.kcp\.io/shard",PHASE:.status.phase)
+  header=$(echo -e "$output" | head -n1)
+  workspaces=$(echo -e "$output" | tail -n+2)
 
-  # pipe available workspace plus pseudo elements into fzf and extract the selected name.
-  workspace=$(echo -e "$workspaces\n$_exit\n$_parent" | $_switchws_inline_fzf | awk '{print $1}')
+  # construct list by injecting parent pseudo element into list and pipe into fzf for selection.
+  workspace=$(echo -e "$(printn "$header")$(print_parent "$current_workspace")$(printn "$workspaces")$_exit" | $_switchws_inline_fzf | awk '{print $1}')
 
   if [ "$workspace" == "$_exit" ] || [ "$workspace" == "" ]; then
     # if [exit] was selected (or nothing at all, corresponds to pressing ESC), the plugin should exit.
     exit 0
   elif [ "$workspace" == "$_parent" ]; then
-    # delete the previous output line (to override the previous "Current workspace ..." output) and
-    # change to the parent workspace.
-    echo -e "\e[1A\e[K$(print_workspace $(kubectl workspace use --short ..))"
+    # switch to parent workspace.
+    current_workspace=$(kubectl workspace use --short .. 2>/dev/null)
   else
-    # also delete the previous output line and change to the selected workspace.
-    echo -e "\e[1A\e[K$(print_workspace $(kubectl workspace use --short "$workspace"))"
+    # switch to selected workspace by name.
+    current_workspace=$(kubectl workspace use --short "$workspace" 2>/dev/null)
   fi
+
+  # delete previous output of workspace and print the new "current workspace".
+  echo -e "\e[1A\e[K$(print_workspace "$current_workspace")"
+
+}
+
+startup_check
+
+# print current workspace once when starting switch-ws.
+current_workspace=$(kubectl workspace current --short)
+print_workspace "$current_workspace"
+
+# start main loop of plugin.
+while true; do
+    main_loop
 done

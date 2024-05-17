@@ -5,7 +5,17 @@ set -eu
 _switchws_inline_fzf='fzf --height=50% --reverse -0 --inline-info --border --header-lines=1'
 _exit='[exit]'
 _parent='..'
+_version='0.1.0'
 
+help () {
+   # Display Help
+   echo "Usage: $0 [-h|-v]"
+   echo "Interactive workspace switcher for kcp."
+   echo
+   echo "Flags:"
+   echo "-h     print this help."
+   echo "-v     print version and exit."
+}
 
 print_workspace () {
     echo -e "Workspace: \033[1;32m$1\033[0m"
@@ -65,6 +75,17 @@ main_loop () {
   echo -e "\e[1A\e[K$(print_workspace "$current_workspace")"
 
 }
+
+while getopts "hv" option; do
+   case $option in
+      h) # display help
+        help
+        exit 0;;
+      v)
+        echo "$_version"
+        exit 0;;
+   esac
+done
 
 startup_check
 

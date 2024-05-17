@@ -38,6 +38,6 @@ Copy [kubectl-switch\_ws](./kubectl-switch_ws) into our `$PATH` (e.g. `~/bin` or
 
 Run `kubectl switch-ws` to start the interactive workspace switcher. Navigate the list of child workspaces in the current workspace and press enter to switch to a specific workspace.
 
-Use the pseudo element `[parent]` to go up one level.
+Use the pseudo element `..` to go up one level to the parent workspace.
 
 Use `[exit]` or press ESC when you have reached the workspace you intended to navigate to.

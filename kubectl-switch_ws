@@ -5,7 +5,7 @@ set -eu
 _switchws_inline_fzf='fzf --height=50% --reverse -0 --inline-info --border --header-lines=1'
 _exit='[exit]'
 _parent='..'
-_version='0.1.0'
+_version='0.2.0'
 
 help () {
    # Display Help

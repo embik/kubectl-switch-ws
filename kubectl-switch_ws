@@ -36,8 +36,8 @@ print_parent () {
 
 # ensure prerequisites are present.
 startup_check () {
-  if ! command -v kubectl-workspace &> /dev/null; then
-    echo "error: could not find kubectl-workspace. See https://docs.kcp.io/kcp/latest/setup/kubectl-plugin/ for installation instructions"
+  if ! command -v kubectl-ws &> /dev/null; then
+    echo "error: could not find kubectl-ws. See https://docs.kcp.io/kcp/latest/setup/kubectl-plugin/ for installation instructions"
     exit 1
   fi
 
@@ -54,7 +54,7 @@ startup_check () {
 
 main () {
   # print current workspace once when starting switch-ws.
-  local current_workspace=$(kubectl workspace current --short)
+  local current_workspace=$(kubectl ws current --short)
   print_workspace "$current_workspace"
 
   # start main loop of plugin.
@@ -87,7 +87,7 @@ switch_workspace () {
     {
     IFS=$'\n' read -r -d '' stderr;
     IFS=$'\n' read -r -d '' stdout;
-    } < <((printf '\0%s\0' "$(kubectl workspace use --short "$1")" 1>&2) 2>&1)
+    } < <((printf '\0%s\0' "$(kubectl ws use --short "$1")" 1>&2) 2>&1)
     local exitcode=$?
 
     if [ $exitcode -ne 0 ]; then
